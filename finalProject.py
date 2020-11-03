@@ -8,6 +8,7 @@ import json
 import os
 import copy
 import numpy as np
+import pickle
 
 # visualization
 import seaborn as sns
@@ -76,9 +77,12 @@ lfc_dict, lfc_list, name_dict = create_player_dicts(path, match_ids = all_matche
 # load the tracking data
 def load_tracking_data(path, match_ids, drop_limit=6000):
 
-    tot_df = pd.DataFrame()
+    match_dfs_list = []
+
+    # tot_df = pd.DataFrame()
 
     for match in match_ids:
+
         with open(path + '/matches/' + match + '/structured_data.json') as f:
             data = json.load(f)
 
@@ -105,35 +109,40 @@ def load_tracking_data(path, match_ids, drop_limit=6000):
             drop_cols = []
             for col in match_df:
                 col_df = match_df[col]
-                c = len([i for i in col_df if i!= None]) # frames covered
+                c = len([i for i in col_df if not np.isnan(i)]) # frames covered
 
                 if c <= drop_limit: # default: 6000 frames = 600 sec = 10 min
                     drop_cols.append(col)
 
             match_df = match_df.drop(columns = drop_cols)
 
-    tot_df = pd.concat([tot_df, match_df], axis=1)
+        match_dfs_list.append(match_df)
+
+    # print(match_dfs_list)
+    # tot_df = tot_df.merge(match_df, how='full', )
+
+    tot_df = pd.concat(match_dfs_list, axis=1)
 
     return tot_df
 
 try:
-    tot_df = pd.read_pickle('tot_df.pkl')
+    tot_df_all = pd.read_pickle('tot_df_all.pkl')
 except:
-    tot_df = load_tracking_data(path, all_matches)
-    tot_df.to_pickle('tot_df.pkl')
+    tot_df_all = load_tracking_data(path, all_matches, drop_limit = 6000)
+    tot_df_all.to_pickle('tot_df_all.pkl')
 
 dt = 0.1 # manually checked the time interval between frames
 
 # computing distance between frames in x and y dimension
-def compute_velocities_accelerations(path, match_ids, drop_limit = 6000):
+def compute_velocities_accelerations(tot_df):
 
     # compute difference between points
-    diff_df = load_tracking_data(path, match_ids).diff(periods=1, axis=0)
+    diff_df = tot_df.diff(periods=1, axis=0)
 
     # loop to get a list of all players_match combinations
     player_match_list = []
     for col in diff_df.columns:
-        if col[-1] == x:
+        if col[-1] == 'x':
             player_match_list.append(col[:-2])
 
     # loop to compute distance, raw velocity/acceleration and smoothed velocity/acceleration
@@ -143,8 +152,8 @@ def compute_velocities_accelerations(path, match_ids, drop_limit = 6000):
         diff_df[str(i)+'_speed'] = diff_df[str(i)+'_speed'].apply(lambda x: np.nan if x > 12 else x) # Usain Bolt filter
         diff_df[str(i)+'_acc'] = diff_df[str(i)+'_speed'].diff()/0.1
 
-        diff_df[str(i)+'_SG3_speed'] = signal.savgol_filter(calc_df[i+'_speed'], 3, 1, mode='nearest')
-        diff_df[str(i)+'_SG5_speed'] = signal.savgol_filter(calc_df[i+'_speed'], 5, 1, mode='nearest')
+        diff_df[str(i)+'_SG3_speed'] = signal.savgol_filter(diff_df[i+'_speed'], 3, 1, mode='nearest')
+        diff_df[str(i)+'_SG5_speed'] = signal.savgol_filter(diff_df[i+'_speed'], 5, 1, mode='nearest')
 
         diff_df[str(i)+'_SG5_acc'] = diff_df[i+'_SG5_speed'].diff()/0.1
         diff_df[str(i)+'_SG3_SG5_acc'] = signal.savgol_filter(diff_df[i+'_SG5_acc'], 3, 1, mode='nearest')
@@ -160,11 +169,44 @@ def compute_velocities_accelerations(path, match_ids, drop_limit = 6000):
     return vel_acc_df
 
 try:
-    vel_acc_df = pd.read_pickle('vel_acc_df.pkl')
+    vel_acc_df_all = pd.read_pickle('vel_acc_df_all.pkl')
 except:
-    vel_acc_df = load_tracking_data(path, all_matches)
-    vel_acc_df.to_pickle('vel_acc_df.pkl')
+    vel_acc_df_all = compute_velocities_accelerations(tot_df_all)
+    vel_acc_df_all.to_pickle('vel_acc_df_all.pkl')
 
-print(vel_acc_df)
+def acc_dec_ratios(vel_acc_df, acc_threshold=2, dec_threshold=-2):
+
+    acc_cols = []
+    for col in vel_acc_df.columns:
+        if 'SG3_SG5_acc' in col:
+            acc_cols.append(col)
+
+    acc_df = vel_acc_df[acc_cols]
+
+    adr_list = []
+
+    for col in acc_df.columns:
+        col_df = acc_df[col]
+        accelerations = col_df[col_df >= 2]
+        decelerations = col_df[col_df <= -2]
+
+        acc_count = len(accelerations)
+        dec_count = len(decelerations)
+
+        ratio = acc_count / dec_count
+        label = col[:-12]
+
+        labels_split = label.split('_')
+
+        player = labels_split[0]
+        match = labels_split[1]
+
+        adr_list.append([player, match, ratio])
+
+
+    return adr_list
+
+adr = acc_dec_ratios(vel_acc_df_all, acc_threshold=2, dec_threshold=-2)
+print(len(adr)/9)
 
 print(f'Time to run the script = {time.time()- t0}')
