@@ -43,14 +43,13 @@ def create_player_dicts(path, match_ids, team_id):
 
     lfc_dict = {}
     lfc_list = []
+    name_dict = {}
+    lfc_dict = {}
 
     for match in match_ids:
 
         with open(path + '/matches/' + match + '/match_data.json') as f:
             data = json.load(f)
-
-        name_dict = {}
-        lfc_dict = {}
 
         for player in data['players']:
             obj_id = player['trackable_object']
