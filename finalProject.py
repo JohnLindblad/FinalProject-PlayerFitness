@@ -44,7 +44,6 @@ def create_player_dicts(path, match_ids, team_id):
     lfc_dict = {}
     lfc_list = []
     name_dict = {}
-    lfc_dict = {}
 
     for match in match_ids:
 
