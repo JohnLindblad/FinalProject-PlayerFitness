@@ -205,6 +205,22 @@ def acc_dec_ratios(vel_acc_df, acc_threshold=2, dec_threshold=-2):
     return adr_list
 
 adr = acc_dec_ratios(vel_acc_df_all, acc_threshold=2, dec_threshold=-2)
-print(len(adr)/9)
+
+'''TO-DO:
+1) compute ratio per player
+    (i.e. combine each players ratio over the two games, maybe weighted by time covered by data per match)
+2) add other variables to include in the profiling
+    (add into acc_dec_ratios function and output a pandas dataframe with players as index and different variables in columns)
+    (maybe rename that function to summary_statistics or something)
+    - distance covered
+    - number of accelerations
+    - number of decelerations
+    - frames covered in the data
+    - ... etc...
+3) apply some clustering
+4) produce plots
+    - dot plot with acc/dec ratio
+    - plot the points and the result from the clustering model (hard if using more than 3 or even 2 variabless)
+'''
 
 print(f'Time to run the script = {time.time()- t0}')
