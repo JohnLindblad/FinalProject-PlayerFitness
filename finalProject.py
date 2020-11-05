@@ -44,6 +44,7 @@ def create_player_dicts(path, match_ids, team_id):
     lfc_dict = {}
     lfc_list = []
     name_dict = {}
+    all_players_list = []
 
     for match in match_ids:
 
@@ -55,6 +56,8 @@ def create_player_dicts(path, match_ids, team_id):
             first_name = player['first_name']
             last_name = player['last_name']
             name_dict[obj_id] = first_name + ' ' + last_name
+            if obj_id not in all_players_list:
+                all_players_list.append(obj_id)
 
             if player['team_id'] == lfc_id:
                 obj_id = player['trackable_object']
@@ -66,11 +69,15 @@ def create_player_dicts(path, match_ids, team_id):
                 position excluded due to conflicting positions between the two games
                 '''
                 lfc_dict[obj_id] = [name] #, pos]
-                lfc_list.append(obj_id)
+                if obj_id not in lfc_list:
+                    lfc_list.append(obj_id)
 
-    return lfc_dict, lfc_list , name_dict
+        assert len(lfc_dict) == len(lfc_list)
+        assert len(name_dict) == len(all_players_list)
 
-lfc_dict, lfc_list, name_dict = create_player_dicts(path, match_ids = all_matches, team_id = lfc_id)
+    return lfc_dict, lfc_list, name_dict, all_players_list
+
+lfc_dict, lfc_list, name_dict, all_players_list = create_player_dicts(path, match_ids = all_matches, team_id = lfc_id)
 
 # load the tracking data
 def load_tracking_data(path, match_ids, drop_limit=6000):
@@ -104,6 +111,7 @@ def load_tracking_data(path, match_ids, drop_limit=6000):
         match_df = pd.DataFrame(frame_list)
 
         if drop_limit != 0:
+
             drop_cols = []
             for col in match_df:
                 col_df = match_df[col]
@@ -131,7 +139,7 @@ except:
 
 dt = 0.1 # manually checked the time interval between frames
 
-def player_match_list(tot_df):
+def create_player_match_list(tot_df):
 
     player_match_list = []
 
@@ -142,7 +150,7 @@ def player_match_list(tot_df):
 
     return player_match_list
 
-pm_list = player_match_list(tot_df_all)
+pm_list = create_player_match_list(tot_df_all)
 
 # computing distance between frames in x and y dimension
 def compute_velocities_accelerations(tot_df, player_match_list):
@@ -208,12 +216,55 @@ def summary_stats(vel_acc_df, player_match_list, acc_threshold=2, dec_threshold=
     return stats_df
 
 stats = summary_stats(vel_acc_df_all, pm_list, acc_threshold=2, dec_threshold=-2)
-print(stats)
+
+
+def summary_stats_aggregated(summary_stats, players_list):
+    indices = list(summary_stats.index)
+    indices_split= []
+    for i in indices:
+        indices_split.append(i.split('_'))
+
+    player_stats = []
+
+    for i in players_list:
+        idx_list = []
+        for j in indices_split:
+            # print(type(i), type(j[0]))
+            if j[0]==str(i):
+                idx_list.append(j)
+
+        dist = 0
+        acc = 0
+        dec = 0
+
+        row_dict = {}
+
+        for idx in idx_list:
+            dist = dist + summary_stats['distance_covered'][idx[0]+'_'+idx[1]]
+            acc = acc + summary_stats['acceleration_time'][idx[0]+'_'+idx[1]]
+            dec = dec + summary_stats['deceleration_time'][idx[0]+'_'+idx[1]]
+
+        if (dist > 0) or (acc > 0) or (dec > 0): # only append rows with non-zero values
+            row_dict = {'distance_covered': dist,
+                        'acceleration_time': acc,
+                        'deceleration_time': dec}
+
+            row = pd.Series(data = row_dict, name = i)
+
+            player_stats.append(row)
+
+    stats_aggregated_df = pd.DataFrame(player_stats).sort_index()
+
+    stats_aggregated_df['acc/dec-ratio'] = stats_aggregated_df['acceleration_time'] / stats_aggregated_df['deceleration_time']
+
+    return stats_aggregated_df
+
+stats_aggregated = summary_stats_aggregated(stats, all_players_list)
+print(stats_aggregated)
 
 '''TO-DO:
-1) combine each players ratio over the two games, maybe weighted by time covered by data per match
-2) apply some clustering
-3) produce plots
+1) apply some clustering
+2) produce plots
     - dot plot with acc/dec ratio
     - plot the points and the result from the clustering model (hard if using more than 3 or even 2 variabless)
 '''
