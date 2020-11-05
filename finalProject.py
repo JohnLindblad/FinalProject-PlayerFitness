@@ -131,19 +131,26 @@ except:
 
 dt = 0.1 # manually checked the time interval between frames
 
+def player_match_list(tot_df):
+
+    player_match_list = []
+
+    # loop to get a list of all players_match combinations
+    for col in tot_df.columns:
+        if col[-1] == 'x':
+            player_match_list.append(col[:-2])
+
+    return player_match_list
+
+pm_list = player_match_list(tot_df_all)
+
 # computing distance between frames in x and y dimension
-def compute_velocities_accelerations(tot_df):
+def compute_velocities_accelerations(tot_df, player_match_list):
 
     # compute difference between points
     diff_df = tot_df.diff(periods=1, axis=0)
 
-    # loop to get a list of all players_match combinations
-    player_match_list = []
-    for col in diff_df.columns:
-        if col[-1] == 'x':
-            player_match_list.append(col[:-2])
-
-    # loop to compute distance, raw velocity/acceleration and smoothed velocity/acceleration
+    # loop to compute distances, raw velocity/acceleration and smoothed velocity/acceleration
     for i in player_match_list:
         diff_df[i+'_dist'] = np.sqrt(diff_df[i+'_x']**2 + diff_df[i+'_y']**2)
         diff_df[i+'_speed'] = diff_df[i+'_dist']/0.1
@@ -172,53 +179,41 @@ except:
     vel_acc_df_all = compute_velocities_accelerations(tot_df_all)
     vel_acc_df_all.to_pickle('vel_acc_df_all.pkl')
 
-def acc_dec_ratios(vel_acc_df, acc_threshold=2, dec_threshold=-2):
+def summary_stats(vel_acc_df, player_match_list, acc_threshold=2, dec_threshold=-2):
 
-    acc_cols = []
+    add_cols = []
+
     for col in vel_acc_df.columns:
         if 'SG3_SG5_acc' in col:
-            acc_cols.append(col)
+            add_cols.append(col)
+        elif 'SG5_speed' in col:
+            add_cols.append(col)
 
-    acc_df = vel_acc_df[acc_cols]
+    add_df = vel_acc_df[add_cols]
+    row_list = []
 
-    adr_list = []
+    for pm in player_match_list:
+        dist = add_df[pm+'_SG5_speed'].sum()*0.1
+        pm_acc = add_df[pm+'_SG3_SG5_acc']
+        acceleration_time = len(pm_acc[pm_acc >= 2])*0.1
+        deceleration_time = len(pm_acc[pm_acc <= -2])*0.1
+        row_dict = {'distance_covered': dist,
+                    'acceleration_time': acceleration_time,
+                    'deceleration_time': deceleration_time}
+        row = pd.Series(data = row_dict, name = pm)
+        row_list.append(row)
 
-    for col in acc_df.columns:
-        col_df = acc_df[col]
-        accelerations = col_df[col_df >= 2]
-        decelerations = col_df[col_df <= -2]
+    stats_df = pd.DataFrame(row_list).sort_index()
 
-        acc_count = len(accelerations)
-        dec_count = len(decelerations)
+    return stats_df
 
-        ratio = acc_count / dec_count
-        label = col[:-12]
-
-        labels_split = label.split('_')
-
-        player = labels_split[0]
-        match = labels_split[1]
-
-        adr_list.append([player, match, ratio])
-
-
-    return adr_list
-
-adr = acc_dec_ratios(vel_acc_df_all, acc_threshold=2, dec_threshold=-2)
+stats = summary_stats(vel_acc_df_all, pm_list, acc_threshold=2, dec_threshold=-2)
+print(stats)
 
 '''TO-DO:
-1) compute ratio per player
-    (i.e. combine each players ratio over the two games, maybe weighted by time covered by data per match)
-2) add other variables to include in the profiling
-    (add into acc_dec_ratios function and output a pandas dataframe with players as index and different variables in columns)
-    (maybe rename that function to summary_statistics or something)
-    - distance covered
-    - number of accelerations
-    - number of decelerations
-    - frames covered in the data
-    - ... etc...
-3) apply some clustering
-4) produce plots
+1) combine each players ratio over the two games, maybe weighted by time covered by data per match
+2) apply some clustering
+3) produce plots
     - dot plot with acc/dec ratio
     - plot the points and the result from the clustering model (hard if using more than 3 or even 2 variabless)
 '''
