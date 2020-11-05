@@ -184,7 +184,7 @@ def compute_velocities_accelerations(tot_df, player_match_list):
 try:
     vel_acc_df_all = pd.read_pickle('vel_acc_df_all.pkl')
 except:
-    vel_acc_df_all = compute_velocities_accelerations(tot_df_all)
+    vel_acc_df_all = compute_velocities_accelerations(tot_df_all, pm_list)
     vel_acc_df_all.to_pickle('vel_acc_df_all.pkl')
 
 def summary_stats(vel_acc_df, player_match_list, acc_threshold=2, dec_threshold=-2):
