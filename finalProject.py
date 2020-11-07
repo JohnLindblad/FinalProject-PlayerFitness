@@ -315,7 +315,16 @@ def kmeans_profiling(points, k):
 
 cluster_labels = kmeans_profiling(point_list, 3)
 
-# plot the cluster
+def lfc_filter_array(df, lfc_list):
+    filter_list = []
+    for idx, row in df.iterrows():
+        val = (idx in lfc_list)
+        filter_list.append(val)
+    return filter_list
+
+filter_list = lfc_filter_array(stats_aggregated, lfc_list)
+
+# plot the clustering
 fig = plt.figure()
 plt.scatter(x_list, y_list, c = cluster_labels)
 fig.savefig('clusterplot.png', dpi=100)
@@ -327,5 +336,10 @@ axs[0].axis([0.8, 1.2, 0, 40])
 axs[1].hist(lfc_df['acc/dec-ratio'], color='r')
 axs[1].axis([0.8, 1.2, 0, 5])
 fig.savefig('adr_hist.png', dpi=100)
+
+# plot with lfc players marked out
+fig = plt.figure()
+plt.scatter(x_list, y_list, c = filter_list)
+fig.savefig('lfc_vs_rest_plot.png', dpi=100)
 
 print(f'Time to run the script = {time.time()- t0}')
