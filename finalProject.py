@@ -378,4 +378,43 @@ lfc_list_forwards = [9449, 9143, 7745]
 
 plotClusterWithName(stats_aggregated, lfc_list_forwards, 'K-means-Clustering-with-2-dimensions-LFC-forwards')
 
+# Plot K-Means cluster with player names
+fig.clear()
+def plotClusterWithName(data, plist, team_dict, title):
+    df = data[['distance_covered','acc/dec-ratio']]
+    df.rename(columns={'acc/dec-ratio':'acc_dec_ratio'}, inplace=True)
+    kmeans = KMeans(n_clusters=3)
+    pred_y = kmeans.fit_predict( df )
+    df['cluster'] = pred_y
+    
+    sns_plot = sns.scatterplot(x="distance_covered", y="acc_dec_ratio", hue=df['cluster'], data=df)
+    fig = sns_plot.get_figure()
+    for i in plist:
+        plt.text(df[df.index==i].distance_covered, df[df.index==i].acc_dec_ratio, team_dict[i][0])
+    plt.title(title)
+    #plt.show()
+    fig.savefig( title+'.png', dpi=100)
+    fig.clear()
+    return        
+
+
+# Plot lfc defenders, pick three Robertson, Dijk and Alexander-Arnold as the played almost all time.
+lfc_list_defenders = [851, 10748, 11847]
+plotClusterWithName(stats_aggregated, lfc_list_defenders, lfc_dict, 'K-means-Clustering-with-2-dimensions-LFC-defenders')
+
+# Plot lfc forwards, pick three Mane, Firmino and Salah as the played almost all time.
+lfc_list_forwards = [9449, 9143, 7745]
+plotClusterWithName(stats_aggregated, lfc_list_forwards, lfc_dict, 'K-means-Clustering-with-2-dimensions-LFC-forwards')
+
+
+## Manchester City
+# Man City offensive players, Jesus, Foden, Bruyne, Sterling
+mci_id = 40 # manually identified the id for Manchester City
+mci_dict, mci_list, name_dict, tmp = create_player_dicts(path, match_ids = all_matches, team_id = mci_id, linux_path=linux_path)
+
+
+mc_list_offensive = [ 11566, 11672, 5821, 8856]
+plotClusterWithName(stats_aggregated, mc_list_offensive, mci_dict, 'K-means-Clustering-with-2-dimensions-MCI-offensive')
+
+
 print(f'Time to run the script = {time.time()- t0}')
