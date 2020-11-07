@@ -342,4 +342,10 @@ fig = plt.figure()
 plt.scatter(x_list, y_list, c = filter_list)
 fig.savefig('lfc_vs_rest_plot.png', dpi=100)
 
+# visualize acceleration / deceleration ratios in 2D
+point_list, x_list, y_list = transform_to_points(stats_aggregated, 'acceleration_time', 'deceleration_time')
+fig = plt.figure()
+plt.scatter(x_list, y_list)
+fig.savefig('acceleration-deceleration_scatterplot.png', dpi=100)
+
 print(f'Time to run the script = {time.time()- t0}')
