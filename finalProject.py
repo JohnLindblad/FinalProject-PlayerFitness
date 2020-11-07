@@ -348,4 +348,34 @@ fig = plt.figure()
 plt.scatter(x_list, y_list)
 fig.savefig('acceleration-deceleration_scatterplot.png', dpi=100)
 
+
+# Plot K-Means cluster with player names
+fig.clear()
+def plotClusterWithName(data, plist, title):
+    df = data[['distance_covered','acc/dec-ratio']]
+    df.rename(columns={'acc/dec-ratio':'acc_dec_ratio'}, inplace=True)
+    kmeans = KMeans(n_clusters=3)
+    pred_y = kmeans.fit_predict( df )
+    df['cluster'] = pred_y
+    
+    sns_plot = sns.scatterplot(x="distance_covered", y="acc_dec_ratio", hue=df['cluster'], data=df)
+    fig = sns_plot.get_figure()
+    for i in plist:
+        plt.text(df[df.index==i].distance_covered, df[df.index==i].acc_dec_ratio, lfc_dict[i][0])
+    plt.title(title)
+    #plt.show()
+    fig.savefig( title+'.png', dpi=100)
+    fig.clear()
+    return        
+
+
+# Plot lfc defenders, pick three Robertson, Dijk and Alexander-Arnold as the played almost all time.
+lfc_list_defenders = [851, 10748, 11847]
+plotClusterWithName(stats_aggregated, lfc_list_defenders, 'K-means-Clustering-with-2-dimensions-LFC-defenders')
+
+# Plot lfc forwards, pick three Mane, Firmino and Salah as the played almost all time.
+lfc_list_forwards = [9449, 9143, 7745]
+
+plotClusterWithName(stats_aggregated, lfc_list_forwards, 'K-means-Clustering-with-2-dimensions-LFC-forwards')
+
 print(f'Time to run the script = {time.time()- t0}')
